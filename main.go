@@ -1,12 +1,12 @@
 package main
 
 import (
-	`flag`
-	`fmt`
-	`io`
-	`net`
-	`net/http`
-	`os`
+	"flag"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
 )
 
 var username string // 学号
@@ -19,7 +19,7 @@ func init() {
 	flag.StringVar(&password, "p", "", "密码")
 	flag.StringVar(&operator, "o", "", "运营商：校园网，中国移动，中国电信，中国联通")
 	flag.Parse()
-	
+
 }
 func main() {
 	var logo = `                  ███  ████  █████                                        █████
@@ -34,6 +34,9 @@ func main() {
                                                                                 ▒▒██████
                                                                                  ▒▒▒▒▒▒   `
 	fmt.Println(logo)
+	if username == "" || password == "" || operator == "" {
+		fmt.Println("参数不足，请“-h”查看具体参数情况")
+	}
 	fmt.Println("学号" + username)
 	fmt.Println("密码" + password)
 	fmt.Println("运营商" + operator)
@@ -47,13 +50,13 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	
+
 	// 设置 referer，登录校园网需要检测来源
 	req.Header.Set("Referer", "http://10.11.0.10/")
-	
+
 	// 模仿浏览器
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
-	
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -72,12 +75,11 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println(string(body))
-	
+	_, _ = fmt.Scanln()
 }
 
 // 获取本机ip
 func get_ip() string {
-	// 获取本机ip
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		fmt.Println(err)
@@ -87,7 +89,6 @@ func get_ip() string {
 			if ipnet.IP.To4() != nil {
 				if ipnet.IP.To4()[0] == 10 {
 					ip := ipnet.IP.String()
-					// log.Println(ip)
 					return ip
 				}
 			}
