@@ -9,16 +9,23 @@ import (
 	"os"
 )
 
-var username string // 学号
-var password string // 密码
-var operator string // 运营商
+var username string           // 学号
+var password string           // 密码
+var operator string           // 运营商
+var version string = "1.0.0"  // 版本号
+var version_bool bool = false // 是否输出版本号
 
 func init() {
 	// 参数列表
 	flag.StringVar(&username, "u", "", "学号")
 	flag.StringVar(&password, "p", "", "密码")
 	flag.StringVar(&operator, "o", "", "运营商：校园网，中国移动，中国电信，中国联通")
+	flag.BoolVar(&version_bool, "v", 1 == 2, "版本号")
 	flag.Parse()
+	if version_bool {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 }
 func main() {
@@ -75,7 +82,6 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println(string(body))
-	_, _ = fmt.Scanln()
 }
 
 // 获取本机ip
