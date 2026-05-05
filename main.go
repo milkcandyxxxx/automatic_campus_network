@@ -7,11 +7,15 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
+	"time"
 )
 
 var username string           // 学号
 var password string           // 密码
 var operator string           // 运营商
+var ssid string               // WiFi名称
 var version string = "1.0.0"  // 版本号
 var version_bool bool = false // 是否输出版本号
 
@@ -20,6 +24,7 @@ func init() {
 	flag.StringVar(&username, "u", "", "学号")
 	flag.StringVar(&password, "p", "", "密码")
 	flag.StringVar(&operator, "o", "", "运营商：校园网，中国移动，中国电信，中国联通")
+	flag.StringVar(&ssid, "w", "", "WiFi名称（可选，不填则跳过连接）")
 	flag.BoolVar(&version_bool, "v", 1 == 2, "版本号")
 	flag.Parse()
 	if version_bool {
@@ -42,7 +47,24 @@ func main() {
                                                                                  ▒▒▒▒▒▒   `
 	fmt.Println(logo)
 	if username == "" || password == "" || operator == "" {
-		fmt.Println("参数不足，请“-h”查看具体参数情况")
+		fmt.Println("参数不足，请\"-h\"查看具体参数情况")
+	}
+
+	// 连接WiFi
+	if ssid != "" {
+		if !isConnected(ssid) {
+			fmt.Println("正在连接 WiFi:", ssid)
+			if err := connectWiFi(ssid); err != nil {
+				fmt.Println("连接失败:", err)
+				return
+			}
+			time.Sleep(3 * time.Second)
+			if !isConnected(ssid) {
+				fmt.Println("WiFi 连接超时，请检查 WiFi 名称或密码配置")
+				return
+			}
+		}
+		fmt.Println("WiFi 已连接:", ssid)
 	}
 	fmt.Println("学号" + username)
 	fmt.Println("密码" + password)
@@ -126,4 +148,25 @@ func get_operator() string {
 		os.Exit(1)
 		return ""
 	}
+}
+
+// 连接WiFi
+func connectWiFi(ssid string) error {
+	cmd := exec.Command("netsh", "wlan", "connect", "name="+ssid)
+	return cmd.Run()
+}
+
+// 检查是否已连接指定WiFi
+func isConnected(ssid string) bool {
+	// 执行命令并获得输出
+	out, err := exec.Command("netsh", "wlan", "show", "interfaces").Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), ssid) || strings.Contains(string(out), "") // 这里留作有线的名称
+}
+
+// 断开WiFi
+func disconnectWiFi() error {
+	return exec.Command("netsh", "wlan", "disconnect").Run()
 }
