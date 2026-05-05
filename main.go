@@ -48,24 +48,30 @@ func main() {
 	fmt.Println(logo)
 	if username == "" || password == "" || operator == "" {
 		fmt.Println("参数不足，请\"-h\"查看具体参数情况")
+		return
 	}
 
 	// 连接WiFi
 	if ssid != "" {
-		if !isConnected(ssid) {
-			fmt.Println("正在连接 WiFi:", ssid)
-			if err := connectWiFi(ssid); err != nil {
-				fmt.Println("连接失败:", err)
-				return
-			}
-			time.Sleep(3 * time.Second)
+		if hasWiredConnection() {
+			fmt.Println("检测到有线连接，跳过 WiFi 连接")
+		} else {
 			if !isConnected(ssid) {
-				fmt.Println("WiFi 连接超时，请检查 WiFi 名称或密码配置")
-				return
+				fmt.Println("正在连接 WiFi:", ssid)
+				if err := connectWiFi(ssid); err != nil {
+					fmt.Println("连接失败:", err)
+					return
+				}
+				time.Sleep(3 * time.Second)
+				if !isConnected(ssid) {
+					fmt.Println("WiFi 连接超时，请检查 WiFi 名称或密码配置")
+					return
+				}
 			}
+			fmt.Println("WiFi 已连接:", ssid)
 		}
-		fmt.Println("WiFi 已连接:", ssid)
 	}
+
 	fmt.Println("学号" + username)
 	fmt.Println("密码" + password)
 	fmt.Println("运营商" + operator)
@@ -90,6 +96,7 @@ func main() {
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	// 关闭 body
 	defer func(Body io.ReadCloser) {
@@ -122,8 +129,7 @@ func get_ip() string {
 			}
 		} else {
 			fmt.Println("ip不合法")
-			os.Exit(1)
-			return ""
+			continue
 		}
 	}
 	fmt.Println("未获得有效ip")
@@ -163,10 +169,56 @@ func isConnected(ssid string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(out), ssid) || strings.Contains(string(out), "") // 这里留作有线的名称
+	return strings.Contains(string(out), ssid)
 }
 
 // 断开WiFi
-func disconnectWiFi() error {
-	return exec.Command("netsh", "wlan", "disconnect").Run()
+// func disconnectWiFi() error {
+// 	return exec.Command("netsh", "wlan", "disconnect").Run()
+// }
+
+// 判断是否存在有线连接
+func hasWiredConnection() bool {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return false
+	}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		name := strings.ToLower(iface.Name)
+		if strings.Contains(name, "wlan") ||
+			strings.Contains(name, "wi-fi") ||
+			strings.Contains(name, "wireless") {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			ipnet, ok := addr.(*net.IPNet)
+			if !ok || ipnet.IP.IsLoopback() {
+				continue
+			}
+
+			ip4 := ipnet.IP.To4()
+			if ip4 == nil {
+				continue
+			}
+
+			if ip4[0] == 10 { // 如果你只想认校园网地址
+				return true
+			}
+
+			// 如果只要“有线已联网”就算，可以直接 return true
+		}
+	}
+
+	return false
 }
